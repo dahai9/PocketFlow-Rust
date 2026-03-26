@@ -1,15 +1,20 @@
 use crate::{Params, context::Context};
 use anyhow::Result;
 use async_trait::async_trait;
-use std::collections::HashMap;
-use std::sync::Arc;
+use strum::Display;
+// use std::collections::HashMap;
+// use std::sync::Arc;
 
-pub trait ProcessState: Send + Sync {
+pub trait ProcessState: Send + Sync + std::fmt::Display {
     fn is_default(&self) -> bool;
-    fn to_condition(&self) -> String;
+
+    fn to_condition(&self) -> String {
+        self.to_string()
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Display)]
+#[strum(serialize_all = "snake_case")]
 pub enum BaseState {
     Success,
     Failure,
@@ -20,14 +25,6 @@ pub enum BaseState {
 impl ProcessState for BaseState {
     fn is_default(&self) -> bool {
         matches!(self, BaseState::Default)
-    }
-
-    fn to_condition(&self) -> String {
-        match self {
-            BaseState::Success => "success".to_string(),
-            BaseState::Failure => "failure".to_string(),
-            BaseState::Default => "default".to_string(),
-        }
     }
 }
 
@@ -87,20 +84,20 @@ pub trait BaseNodeTrait: Node<State = BaseState> {}
 #[allow(dead_code)]
 pub struct BaseNode {
     params: Params,
-    next_nodes: HashMap<String, Arc<dyn BaseNodeTrait>>,
+    // next_nodes: HashMap<String, Arc<dyn BaseNodeTrait>>,
 }
 
 impl BaseNode {
     pub fn new(params: Params) -> Self {
         Self {
             params,
-            next_nodes: HashMap::new(),
+            // next_nodes: HashMap::new(),
         }
     }
 
-    pub fn add_next(&mut self, action: String, node: Arc<dyn BaseNodeTrait>) {
-        self.next_nodes.insert(action, node);
-    }
+    // pub fn add_next(&mut self, action: String, node: Arc<dyn BaseNodeTrait>) {
+    //     self.next_nodes.insert(action, node);
+    // }
 }
 
 #[async_trait]

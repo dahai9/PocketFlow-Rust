@@ -1,3 +1,5 @@
+use std::default;
+
 use anyhow::{Context as AnyhowContext, Result};
 use async_trait::async_trait;
 use chrono::NaiveDate;
@@ -7,34 +9,22 @@ use openai_api_rust::chat::*;
 use openai_api_rust::*;
 use pocketflow_rs::{Context, Node, ProcessResult, ProcessState};
 use serde_json::{Value, json};
+use strum::Display;
 use tracing::{error, info};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Display)]
+#[strum(serialize_all = "snake_case")]
 pub enum SqlExecutorState {
     SchemaRetrieved,
     SqlGenerated,
     SqlExecuted,
+    #[default]
     Default,
 }
 
 impl ProcessState for SqlExecutorState {
     fn is_default(&self) -> bool {
         matches!(self, SqlExecutorState::Default)
-    }
-
-    fn to_condition(&self) -> String {
-        match self {
-            SqlExecutorState::SchemaRetrieved => "schema_retrieved".to_string(),
-            SqlExecutorState::SqlGenerated => "sql_generated".to_string(),
-            SqlExecutorState::SqlExecuted => "sql_executed".to_string(),
-            SqlExecutorState::Default => "default".to_string(),
-        }
-    }
-}
-
-impl Default for SqlExecutorState {
-    fn default() -> Self {
-        SqlExecutorState::Default
     }
 }
 

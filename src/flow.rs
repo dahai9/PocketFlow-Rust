@@ -159,13 +159,13 @@ macro_rules! build_flow {
         )*
         // Handle edges appropriately
         $(
-            build_flow!(@edge g, $edge);
+            build_flow!(@edge_process g, $edge);
         )*
         g
     }};
 
 
-    (@edge $g:expr, ($from:expr, $to:expr, $condition:expr)) => {
+    (@edge_process $g:expr, ($from:expr, $to:expr, $condition:expr)) => {
         $g.add_edge($from, $to, $condition);
     };
 }
@@ -204,7 +204,7 @@ macro_rules! build_batch_flow {
         )*
         // Handle edges appropriately
         $(
-            build_flow!(@edge g.flow, $edge);
+            build_flow!(@edge_process g.flow, $edge);
         )*
         g
     }};
@@ -216,10 +216,11 @@ mod tests {
     use crate::node::{Node, ProcessResult, ProcessState};
     use async_trait::async_trait;
     use serde_json::json;
+    use strum::Display;
 
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq, Default, Display)]
+    #[strum(serialize_all = "snake_case")]
     #[allow(dead_code)]
-    #[derive(Default)]
     enum CustomState {
         Success,
         Failure,
@@ -230,14 +231,6 @@ mod tests {
     impl ProcessState for CustomState {
         fn is_default(&self) -> bool {
             matches!(self, CustomState::Default)
-        }
-
-        fn to_condition(&self) -> String {
-            match self {
-                CustomState::Success => "success".to_string(),
-                CustomState::Failure => "failure".to_string(),
-                CustomState::Default => "default".to_string(),
-            }
         }
     }
 

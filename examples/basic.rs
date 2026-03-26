@@ -2,8 +2,9 @@ use anyhow::Result;
 use pocketflow_rs::{Context, Node, ProcessResult, ProcessState, build_flow};
 use rand::Rng;
 use serde_json::Value;
-
-#[derive(Debug, Clone, PartialEq, Default)]
+use strum::Display;
+#[derive(Debug, Clone, PartialEq, Default, Display)]
+#[strum(serialize_all = "snake_case")]
 enum NumberState {
     Small,
     Medium,
@@ -15,15 +16,6 @@ enum NumberState {
 impl ProcessState for NumberState {
     fn is_default(&self) -> bool {
         matches!(self, NumberState::Default)
-    }
-
-    fn to_condition(&self) -> String {
-        match self {
-            NumberState::Small => "small".to_string(),
-            NumberState::Medium => "medium".to_string(),
-            NumberState::Large => "large".to_string(),
-            NumberState::Default => "default".to_string(),
-        }
     }
 }
 

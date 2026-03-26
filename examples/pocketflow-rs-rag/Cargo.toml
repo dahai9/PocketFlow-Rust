@@ -18,6 +18,7 @@ reqwest = { version = "0.12.15", features = ["json"] }
 uuid = { version = "1.16.0", features = ["v4"] }
 qdrant-client = "1.14.0"
 termimad = "0.31.3"
+strum ={ workspace = true }
 
 [dev-dependencies]
 tempfile = "3.8"
