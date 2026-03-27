@@ -4,3 +4,6 @@ pub mod text_chunking;
 pub mod vector_db;
 pub mod viz_debug;
 pub mod web_search;
+pub mod pi_llm;
+pub mod session_manager;
+pub mod tools;

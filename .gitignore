@@ -6,3 +6,5 @@ target
 
 Cargo.lock
 .vscode/
+.pi/
+test_dir/
