@@ -7,3 +7,4 @@ pub mod web_search;
 pub mod pi_llm;
 pub mod session_manager;
 pub mod tools;
+pub mod config;

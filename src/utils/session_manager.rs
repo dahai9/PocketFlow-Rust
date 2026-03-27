@@ -16,6 +16,8 @@ pub struct AgentMessage {
     pub tool_calls: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_call_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clears_history: Option<bool>,
 }
 
 pub struct SessionManager {
@@ -44,7 +46,7 @@ impl SessionManager {
         Ok(())
     }
 
-    pub fn load_history(&self, head_id: Option<&str>) -> anyhow::Result<Vec<AgentMessage>> {
+    pub fn load_history(&self, _head_id: Option<&str>) -> anyhow::Result<Vec<AgentMessage>> {
         if !self.log_path.exists() {
             return Ok(Vec::new());
         }
@@ -56,6 +58,9 @@ impl SessionManager {
         for line in reader.lines() {
             if let Ok(l) = line {
                 if let Ok(msg) = serde_json::from_str::<AgentMessage>(&l) {
+                    if msg.clears_history == Some(true) {
+                        messages.clear();
+                    }
                     messages.push(msg);
                 }
             }
