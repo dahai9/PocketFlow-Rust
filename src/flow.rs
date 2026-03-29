@@ -92,6 +92,31 @@ impl<S: ProcessState + Default> Flow<S> {
 
         Ok(context.get("result").unwrap_or(&Value::Null).clone())
     }
+
+    pub fn to_mermaid(&self) -> String {
+        let mut mermaid = String::from("flowchart TD\n");
+        
+        // 声明所有节点
+        let mut nodes: Vec<_> = self.nodes.keys().collect();
+        nodes.sort(); // 确保输出稳定
+        for node_name in nodes {
+            mermaid.push_str(&format!("    {}[{}]\n", node_name, node_name));
+        }
+
+        // 声明所有连线
+        let mut edge_keys: Vec<_> = self.edges.keys().collect();
+        edge_keys.sort(); // 确保输出稳定
+        for from in edge_keys {
+            let edges = &self.edges[from];
+            let mut sorted_edges = edges.clone();
+            sorted_edges.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+            for (to, condition) in sorted_edges {
+                mermaid.push_str(&format!("    {} -->|{}| {}\n", from, condition, to));
+            }
+        }
+        
+        mermaid
+    }
 }
 
 #[allow(dead_code)]
@@ -124,6 +149,10 @@ impl<S: ProcessState + Default> BatchFlow<S> {
 
         info!("Batch flow execution completed");
         Ok(())
+    }
+
+    pub fn to_mermaid(&self) -> String {
+        self.flow.to_mermaid()
     }
 }
 
@@ -217,6 +246,7 @@ mod tests {
     use async_trait::async_trait;
     use serde_json::json;
     use strum::Display;
+    use crate::node::SubFlowNode;
 
     #[derive(Debug, Clone, PartialEq, Default, Display)]
     #[strum(serialize_all = "snake_case")]
@@ -357,5 +387,73 @@ mod tests {
         let context = Context::new();
         let result = flow3.run(context).await.unwrap();
         assert_eq!(result, json!({"data": "test2"}));
+    }
+
+    #[tokio::test]
+    async fn test_subflow_node() {
+        // 1. Create subflow
+        let sub_node = TestNode::new(json!({"sub_result": "from_subflow"}), CustomState::Success);
+        let sub_flow = build_flow!(
+            start: ("sub_start", sub_node)
+        );
+
+        // 2. Create SubFlowNode as a node in parent flow
+        let subflow_node = SubFlowNode::<CustomState, CustomState>::new(
+            sub_flow,
+            |ctx: &Context| {
+                // Example: Inherit everything
+                ctx.clone()
+            },
+            |parent_ctx: &mut Context, result: &Result<serde_json::Value>| {
+                // Example: Map result to parent context
+                match result {
+                    Ok(val) => {
+                        parent_ctx.set("result", val.clone());
+                        Ok(ProcessResult::new(CustomState::Success, "subflow ok".to_string()))
+                    }
+                    Err(e) => {
+                        parent_ctx.set("error", json!(e.to_string()));
+                        Ok(ProcessResult::new(CustomState::Failure, e.to_string()))
+                    }
+                }
+            },
+        );
+
+        // 3. Create parent flow
+        let parent_flow = build_flow!(
+            start: ("run_subflow", subflow_node)
+        );
+
+        let context = Context::new();
+        let result: serde_json::Value = parent_flow.run(context).await.unwrap();
+
+        assert_eq!(result, json!({"sub_result": "from_subflow"}));
+    }
+
+    #[test]
+    fn test_flow_to_mermaid() {
+        let node1 = TestNode::new(json!({"data": "test1"}), CustomState::Success);
+        let node2 = TestNode::new(json!({"data": "test2"}), CustomState::Default);
+        let end_node = TestNode::new(json!({"final_result": "finished"}), CustomState::Default);
+        
+        let flow = build_flow!(
+            start: ("start", node1),
+            nodes: [("next", node2), ("end", end_node)],
+            edges: [
+                ("start", "next", CustomState::Success),
+                ("next", "end", CustomState::Default)
+            ]
+        );
+
+        let mermaid = flow.to_mermaid();
+        let expected = "\
+flowchart TD
+    end[end]
+    next[next]
+    start[start]
+    next -->|default| end
+    start -->|success| next
+";
+        assert_eq!(mermaid, expected);
     }
 }

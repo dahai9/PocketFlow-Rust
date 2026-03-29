@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use pocketflow_rs::{build_flow, Context, Flow, Node, ProcessResult, ProcessState};
+use pocketflow_rs::{build_flow, Context, Node, ProcessResult, ProcessState};
 use serde_json::{json, Value};
 use std::io::{self, Write};
 use std::sync::Arc;
@@ -59,7 +59,7 @@ struct InputNode {
 impl Node for InputNode {
     type State = PiState;
 
-    async fn execute(&self, context: &Context) -> Result<Value> {
+    async fn execute(&self, _context: &Context) -> Result<Value> {
         print!("> ");
         io::stdout().flush()?;
         let mut input = String::new();
@@ -516,7 +516,11 @@ async fn main() -> Result<()> {
     } else {
         context.set("messages", json!([]));
     }
-
+     // Export flow visualization
+    std::fs::create_dir_all("test_dir")?;
+    let mermaid = flow.to_mermaid();
+    std::fs::write("test_dir/pi_flow.mmd", mermaid)?;
+    println!("Saved flow visualization to test_dir/pi_flow.mmd");
     println!("pi agent started. Type 'exit' to quit.");
     
     match flow.run(context).await {

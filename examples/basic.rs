@@ -157,6 +157,12 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Create context
     let context = Context::new();
 
+    // Export flow visualization
+    std::fs::create_dir_all("test_dir")?;
+    let mermaid = flow.to_mermaid();
+    std::fs::write("test_dir/basic_flow.mmd", mermaid)?;
+    println!("Saved flow visualization to test_dir/basic_flow.mmd");
+
     // Run the flow
     println!("Starting flow execution...");
     flow.run(context).await?;

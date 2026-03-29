@@ -80,7 +80,7 @@ compact_threshold = 6000
         }
 
         let content = fs::read_to_string(&config_path)
-            .with_context(|| format!("Failed to read config file at {{:?}}", config_path))?;
+            .with_context(|| format!("Failed to read config file at {:?}", config_path))?;
         
         let config: AppConfig = toml::from_str(&content)
             .with_context(|| "Failed to parse config.toml")?;

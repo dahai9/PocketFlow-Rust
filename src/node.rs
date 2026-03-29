@@ -2,8 +2,8 @@ use crate::{Params, context::Context};
 use anyhow::Result;
 use async_trait::async_trait;
 use strum::Display;
-// use std::collections::HashMap;
-// use std::sync::Arc;
+use std::sync::Arc;
+use crate::flow::Flow;
 
 pub trait ProcessState: Send + Sync + std::fmt::Display {
     fn is_default(&self) -> bool;
@@ -138,3 +138,60 @@ impl Node for BatchNode {
 }
 
 impl BaseNodeTrait for BatchNode {}
+
+pub struct SubFlowNode<SubState, ParentState>
+where
+    SubState: ProcessState + Default,
+    ParentState: ProcessState + Default,
+{
+    pub sub_flow: Arc<Flow<SubState>>,
+    pub context_builder: Box<dyn Fn(&Context) -> Context + Send + Sync>,
+    pub result_mapper: Box<
+        dyn Fn(&mut Context, &Result<serde_json::Value>) -> Result<ProcessResult<ParentState>>
+            + Send
+            + Sync,
+    >,
+}
+
+impl<SubState, ParentState> SubFlowNode<SubState, ParentState>
+where
+    SubState: ProcessState + Default,
+    ParentState: ProcessState + Default,
+{
+    pub fn new(
+        sub_flow: Flow<SubState>,
+        context_builder: impl Fn(&Context) -> Context + Send + Sync + 'static,
+        result_mapper: impl Fn(&mut Context, &Result<serde_json::Value>) -> Result<ProcessResult<ParentState>>
+            + Send
+            + Sync
+            + 'static,
+    ) -> Self {
+        Self {
+            sub_flow: Arc::new(sub_flow),
+            context_builder: Box::new(context_builder),
+            result_mapper: Box::new(result_mapper),
+        }
+    }
+}
+
+#[async_trait]
+impl<SubState, ParentState> Node for SubFlowNode<SubState, ParentState>
+where
+    SubState: ProcessState + Default,
+    ParentState: ProcessState + Default,
+{
+    type State = ParentState;
+
+    async fn execute(&self, context: &Context) -> Result<serde_json::Value> {
+        let sub_context = (self.context_builder)(context);
+        self.sub_flow.run(sub_context).await
+    }
+
+    async fn post_process(
+        &self,
+        context: &mut Context,
+        result: &Result<serde_json::Value>,
+    ) -> Result<ProcessResult<Self::State>> {
+        (self.result_mapper)(context, result)
+    }
+}
