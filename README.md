@@ -13,6 +13,8 @@ A Rust implementation of [PocketFlow](https://github.com/The-Pocket/PocketFlow),
 - ⚡ **Async first:** Non-blocking node execution and post-processing
 - 📦 **Batch support:** High-performance processing of multiple contexts
 - 🧩 **Extensible:** Custom state management and node systems
+- 🌳 **Composable:** Support for `SubFlow` nodes to build recursive workflows
+- 📊 **Flow Visualization:** Generate Mermaid TD diagrams from flow graphs
 - 🛠️ **Utility-rich:** Optional integrations for OpenAI, Qdrant, and web search
 
 ## 🚀 Quick Start
@@ -44,6 +46,8 @@ impl ProcessState for MyState {
     fn is_default(&self) -> bool {
         matches!(self, MyState::Default)
     }
+
+    // to_condition() is automatically implemented via Display (strum)
 }
 ```
 
@@ -98,25 +102,31 @@ let result = flow.run(context).await?;
 
 ## 🏗️ Advanced Usage
 
-### Batch Processing
+### Composition with SubFlow
 
-Build high-throughput flows for parallel processing:
+You can nest a `Flow` inside another `Flow` using `SubFlowNode`. This allows for modular and recursive workflow design.
 
 ```rust
-use pocketflow_rs::build_batch_flow;
+use pocketflow_rs::{SubFlowNode, Flow};
 
-let batch_flow = build_batch_flow!(
-    start: ("start", node1),
-    nodes: [("next", node2)],
-    edges: [
-        ("start", "next", MyState::Success)
-    ],
-    batch_size: 10
+let sub_flow = create_sub_flow();
+let sub_flow_node = SubFlowNode::new(
+    sub_flow,
+    |parent_context| parent_context.clone(), // context_builder
+    |parent_context, result| { /* map sub-flow result back to parent state */ }
 );
-
-let contexts = vec![Context::new(); 10];
-let results = batch_flow.run_batch(contexts).await?;
 ```
+
+### Flow Visualization
+
+Generate Mermaid TD flowchart strings automatically to visualize your complex workflows.
+
+```rust
+let mermaid = flow.to_mermaid();
+println!("{}", mermaid);
+```
+
+Check out `test_dir/pi_flow.mmd` after running the `pi` agent for a real-world example.
 
 ## 🛠️ Available Features
 
@@ -139,6 +149,7 @@ pocketflow_rs = { version = "0.1.0", features = ["openai", "qdrant"] }
 Check out the `examples/` directory for detailed implementations:
 
 - 🟢 [**basic.rs**](./examples/basic.rs): Basic flow with custom states
+- 🤖 [**pi**](./examples/pi/): Modular interactive coding agent with tool-use and history compaction
 - 🗃️ [**text2sql**](./examples/text2sql/): Text-to-SQL workflow using OpenAI
 - 🔍 [**pocketflow-rs-rag**](./examples/pocketflow-rs-rag/): Retrieval-Augmented Generation (RAG) system
 

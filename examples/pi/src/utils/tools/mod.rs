@@ -27,7 +27,7 @@ pub fn execute_bash(command: &str, cwd: &str) -> String {
         .arg(command)
         .current_dir(cwd)
         .output();
-        
+
     match output {
         Ok(out) => {
             let mut result = String::from_utf8_lossy(&out.stdout).to_string();

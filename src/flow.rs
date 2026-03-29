@@ -95,7 +95,7 @@ impl<S: ProcessState + Default> Flow<S> {
 
     pub fn to_mermaid(&self) -> String {
         let mut mermaid = String::from("flowchart TD\n");
-        
+
         // 声明所有节点
         let mut nodes: Vec<_> = self.nodes.keys().collect();
         nodes.sort(); // 确保输出稳定
@@ -114,7 +114,7 @@ impl<S: ProcessState + Default> Flow<S> {
                 mermaid.push_str(&format!("    {} -->|{}| {}\n", from, condition, to));
             }
         }
-        
+
         mermaid
     }
 }
@@ -242,11 +242,11 @@ macro_rules! build_batch_flow {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::node::SubFlowNode;
     use crate::node::{Node, ProcessResult, ProcessState};
     use async_trait::async_trait;
     use serde_json::json;
     use strum::Display;
-    use crate::node::SubFlowNode;
 
     #[derive(Debug, Clone, PartialEq, Default, Display)]
     #[strum(serialize_all = "snake_case")]
@@ -409,7 +409,10 @@ mod tests {
                 match result {
                     Ok(val) => {
                         parent_ctx.set("result", val.clone());
-                        Ok(ProcessResult::new(CustomState::Success, "subflow ok".to_string()))
+                        Ok(ProcessResult::new(
+                            CustomState::Success,
+                            "subflow ok".to_string(),
+                        ))
                     }
                     Err(e) => {
                         parent_ctx.set("error", json!(e.to_string()));
@@ -435,7 +438,7 @@ mod tests {
         let node1 = TestNode::new(json!({"data": "test1"}), CustomState::Success);
         let node2 = TestNode::new(json!({"data": "test2"}), CustomState::Default);
         let end_node = TestNode::new(json!({"final_result": "finished"}), CustomState::Default);
-        
+
         let flow = build_flow!(
             start: ("start", node1),
             nodes: [("next", node2), ("end", end_node)],

@@ -1,9 +1,12 @@
 use anyhow::Result;
 use clap::Parser;
-use pocketflow_rs::{build_flow, Context};
+use pi::{
+    AppConfig, AppContext, CheckSizeNode, DoCompactNode, InputNode, LLMReasoningNode, PiLLM,
+    PiState, SessionManager, ToolExecutionNode,
+};
+use pocketflow_rs::{Context, build_flow};
 use serde_json::json;
 use std::sync::Arc;
-use pi::{InputNode, CheckSizeNode, DoCompactNode, LLMReasoningNode, ToolExecutionNode, AppContext, PiState, PiLLM, SessionManager, AppConfig};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -21,26 +24,38 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    
+
     // Setup directory and SessionManager
     let cwd = std::env::current_dir()?;
     let session_manager = SessionManager::new(&cwd);
-    
+
     // Load config
     let config = AppConfig::load(&cwd)?;
 
     // Load API Key
-    let (api_key, mut endpoint): (String, String) = if let Some(model_conf) = config.models.get(&args.model) {
-        if let Some(provider_conf) = config.providers.get(&model_conf.provider) {
-            let key = std::env::var(&provider_conf.api_key_env).unwrap_or_else(|_| "dummy_key".to_string());
-            (key, provider_conf.api_base.clone())
+    let (api_key, mut endpoint): (String, String) =
+        if let Some(model_conf) = config.models.get(&args.model) {
+            if let Some(provider_conf) = config.providers.get(&model_conf.provider) {
+                let key = std::env::var(&provider_conf.api_key_env)
+                    .unwrap_or_else(|_| "dummy_key".to_string());
+                (key, provider_conf.api_base.clone())
+            } else {
+                (
+                    std::env::var("OPENAI_API_KEY").unwrap_or_else(|_| "dummy_key".to_string()),
+                    "https://api.openai.com/v1".to_string(),
+                )
+            }
         } else {
-            (std::env::var("OPENAI_API_KEY").unwrap_or_else(|_| "dummy_key".to_string()), "https://api.openai.com/v1".to_string())
-        }
-    } else {
-        println!("Warning: Model '{}' not found in config, falling back to openai env vars.", args.model);
-        (std::env::var("OPENAI_API_KEY").unwrap_or_else(|_| "dummy_key".to_string()), std::env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com/v1".to_string()))
-    };
+            println!(
+                "Warning: Model '{}' not found in config, falling back to openai env vars.",
+                args.model
+            );
+            (
+                std::env::var("OPENAI_API_KEY").unwrap_or_else(|_| "dummy_key".to_string()),
+                std::env::var("OPENAI_BASE_URL")
+                    .unwrap_or_else(|_| "https://api.openai.com/v1".to_string()),
+            )
+        };
 
     if !endpoint.ends_with("/chat/completions") {
         endpoint = format!("{}/chat/completions", endpoint.trim_end_matches('/'));
@@ -55,11 +70,21 @@ async fn main() -> Result<()> {
         model_name: args.model.clone(),
     });
 
-    let input_node = InputNode { app: app_context.clone() };
-    let check_size_node = CheckSizeNode { app: app_context.clone() };
-    let compact_node = DoCompactNode { app: app_context.clone() };
-    let llm_node = LLMReasoningNode { app: app_context.clone() };
-    let tool_node = ToolExecutionNode { app: app_context.clone() };
+    let input_node = InputNode {
+        app: app_context.clone(),
+    };
+    let check_size_node = CheckSizeNode {
+        app: app_context.clone(),
+    };
+    let compact_node = DoCompactNode {
+        app: app_context.clone(),
+    };
+    let llm_node = LLMReasoningNode {
+        app: app_context.clone(),
+    };
+    let tool_node = ToolExecutionNode {
+        app: app_context.clone(),
+    };
 
     let flow = build_flow!(
         start: ("input", input_node),
@@ -81,7 +106,7 @@ async fn main() -> Result<()> {
     );
 
     let mut context = Context::new();
-    
+
     // Load history
     let history = app_context.session_manager.load_history(None)?;
     if !history.is_empty() {
@@ -91,13 +116,13 @@ async fn main() -> Result<()> {
     } else {
         context.set("messages", json!([]));
     }
-     // Export flow visualization
+    // Export flow visualization
     std::fs::create_dir_all("test_dir")?;
     let mermaid = flow.to_mermaid();
     std::fs::write("test_dir/pi_flow.mmd", mermaid)?;
     println!("Saved flow visualization to test_dir/pi_flow.mmd");
     println!("pi agent started. Type 'exit' to quit.");
-    
+
     match flow.run(context).await {
         Ok(_) => println!("Agent shutdown."),
         Err(e) => eprintln!("Error running flow: {}", e),

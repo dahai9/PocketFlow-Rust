@@ -20,7 +20,9 @@ pub struct GeneralConfig {
 
 impl Default for GeneralConfig {
     fn default() -> Self {
-        Self { auto_compact: default_auto_compact() }
+        Self {
+            auto_compact: default_auto_compact(),
+        }
     }
 }
 
@@ -46,11 +48,11 @@ impl AppConfig {
         let workspace = workspace.as_ref();
         let mut config_dir = workspace.to_path_buf();
         config_dir.push(".pi");
-        
+
         if !config_dir.exists() {
             fs::create_dir_all(&config_dir)?;
         }
-        
+
         let mut config_path = config_dir.clone();
         config_path.push("config.toml");
 
@@ -81,10 +83,10 @@ compact_threshold = 6000
 
         let content = fs::read_to_string(&config_path)
             .with_context(|| format!("Failed to read config file at {:?}", config_path))?;
-        
-        let config: AppConfig = toml::from_str(&content)
-            .with_context(|| "Failed to parse config.toml")?;
-            
+
+        let config: AppConfig =
+            toml::from_str(&content).with_context(|| "Failed to parse config.toml")?;
+
         Ok(config)
     }
 

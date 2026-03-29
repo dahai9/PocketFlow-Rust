@@ -1,10 +1,10 @@
-use anyhow::Result;
-use pocketflow_rs::{Context, Node, ProcessResult};
-use serde_json::{json, Value};
-use std::sync::Arc;
 use crate::state::{AppContext, PiState};
 use crate::utils::session_manager::AgentMessage;
 use crate::utils::tools::{execute_bash, read_file, write_file};
+use anyhow::Result;
+use pocketflow_rs::{Context, Node, ProcessResult};
+use serde_json::{Value, json};
+use std::sync::Arc;
 
 pub struct ToolExecutionNode {
     pub app: Arc<AppContext>,
@@ -17,7 +17,7 @@ impl Node for ToolExecutionNode {
     async fn execute(&self, context: &Context) -> Result<Value> {
         let messages = context.get("messages").unwrap().as_array().unwrap();
         let last_msg = messages.last().unwrap();
-        
+
         let mut tool_results = Vec::new();
 
         if let Some(tool_calls) = last_msg.get("tool_calls").and_then(|tc| tc.as_array()) {
@@ -29,7 +29,7 @@ impl Node for ToolExecutionNode {
                 let args: Value = serde_json::from_str(args_str)?;
 
                 println!("Executing tool: {} with args: {}", name, args_str);
-                
+
                 let output = match name {
                     "read_file" => {
                         let path = args["path"].as_str().unwrap();
@@ -70,17 +70,24 @@ impl Node for ToolExecutionNode {
         context: &mut Context,
         result: &Result<Value>,
     ) -> Result<ProcessResult<PiState>> {
-        let tool_results: Vec<AgentMessage> = serde_json::from_value(result.as_ref().unwrap().clone())?;
-        
+        let tool_results: Vec<AgentMessage> =
+            serde_json::from_value(result.as_ref().unwrap().clone())?;
+
         let mut messages = context.get("messages").cloned().unwrap_or(json!([]));
-        
+
         for msg in tool_results {
             self.app.session_manager.append_message(&msg)?;
-            messages.as_array_mut().unwrap().push(serde_json::to_value(&msg)?);
+            messages
+                .as_array_mut()
+                .unwrap()
+                .push(serde_json::to_value(&msg)?);
         }
-        
+
         context.set("messages", messages);
 
-        Ok(ProcessResult::new(PiState::CheckSize, "check_size".to_string()))
+        Ok(ProcessResult::new(
+            PiState::CheckSize,
+            "check_size".to_string(),
+        ))
     }
 }

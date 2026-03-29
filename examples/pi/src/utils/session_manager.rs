@@ -53,7 +53,7 @@ impl SessionManager {
 
         let file = File::open(&self.log_path)?;
         let reader = BufReader::new(file);
-        
+
         let mut messages = Vec::new();
         for line in reader.lines() {
             if let Ok(l) = line {
@@ -65,7 +65,7 @@ impl SessionManager {
                 }
             }
         }
-        
+
         // Simple linear history for now.
         // In a full implementation, we would rebuild the tree using parent_id up to head_id.
         Ok(messages)

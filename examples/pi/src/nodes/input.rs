@@ -1,11 +1,11 @@
+use crate::state::{AppContext, PiState};
+use crate::utils::session_manager::AgentMessage;
 use anyhow::Result;
 use pocketflow_rs::{Context, Node, ProcessResult};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::{self, Write};
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::state::{AppContext, PiState};
-use crate::utils::session_manager::AgentMessage;
 
 pub struct InputNode {
     pub app: Arc<AppContext>,
@@ -27,7 +27,7 @@ impl Node for InputNode {
         }
 
         let id = Uuid::new_v4().to_string();
-        
+
         let msg = AgentMessage {
             id: id.clone(),
             parent_id: None,
@@ -52,7 +52,10 @@ impl Node for InputNode {
     ) -> Result<ProcessResult<PiState>> {
         let res = result.as_ref().unwrap();
         if res.get("command").and_then(|v| v.as_str()) == Some("exit") {
-            return Ok(ProcessResult::new(PiState::Finished, "finished".to_string()));
+            return Ok(ProcessResult::new(
+                PiState::Finished,
+                "finished".to_string(),
+            ));
         }
 
         let msg_val = res.get("message").unwrap();
@@ -60,6 +63,9 @@ impl Node for InputNode {
         messages.as_array_mut().unwrap().push(msg_val.clone());
         context.set("messages", messages);
 
-        Ok(ProcessResult::new(PiState::CheckSize, "check_size".to_string()))
+        Ok(ProcessResult::new(
+            PiState::CheckSize,
+            "check_size".to_string(),
+        ))
     }
 }

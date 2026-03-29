@@ -1,9 +1,9 @@
+use crate::flow::Flow;
 use crate::{Params, context::Context};
 use anyhow::Result;
 use async_trait::async_trait;
-use strum::Display;
 use std::sync::Arc;
-use crate::flow::Flow;
+use strum::Display;
 
 pub trait ProcessState: Send + Sync + std::fmt::Display {
     fn is_default(&self) -> bool;
@@ -146,6 +146,7 @@ where
 {
     pub sub_flow: Arc<Flow<SubState>>,
     pub context_builder: Box<dyn Fn(&Context) -> Context + Send + Sync>,
+    #[allow(clippy::type_complexity)]
     pub result_mapper: Box<
         dyn Fn(&mut Context, &Result<serde_json::Value>) -> Result<ProcessResult<ParentState>>
             + Send
@@ -161,10 +162,13 @@ where
     pub fn new(
         sub_flow: Flow<SubState>,
         context_builder: impl Fn(&Context) -> Context + Send + Sync + 'static,
-        result_mapper: impl Fn(&mut Context, &Result<serde_json::Value>) -> Result<ProcessResult<ParentState>>
-            + Send
-            + Sync
-            + 'static,
+        result_mapper: impl Fn(
+            &mut Context,
+            &Result<serde_json::Value>,
+        ) -> Result<ProcessResult<ParentState>>
+        + Send
+        + Sync
+        + 'static,
     ) -> Self {
         Self {
             sub_flow: Arc::new(sub_flow),

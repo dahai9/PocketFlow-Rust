@@ -1,10 +1,10 @@
-use anyhow::Result;
-use pocketflow_rs::{Context, Node, ProcessResult};
-use serde_json::{json, Value};
-use std::sync::Arc;
-use uuid::Uuid;
 use crate::state::{AppContext, PiState};
 use crate::utils::session_manager::AgentMessage;
+use anyhow::Result;
+use pocketflow_rs::{Context, Node, ProcessResult};
+use serde_json::{Value, json};
+use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct LLMReasoningNode {
     pub app: Arc<AppContext>,
@@ -16,7 +16,7 @@ impl Node for LLMReasoningNode {
 
     async fn execute(&self, context: &Context) -> Result<Value> {
         let messages = context.get("messages").unwrap_or(&json!([])).clone();
-        
+
         let tools = json!([
             {
                 "type": "function",
@@ -73,12 +73,18 @@ impl Node for LLMReasoningNode {
                 });
                 if let Some(calls) = m.get("tool_calls") {
                     if !calls.is_null() {
-                        mapped.as_object_mut().unwrap().insert("tool_calls".to_string(), calls.clone());
+                        mapped
+                            .as_object_mut()
+                            .unwrap()
+                            .insert("tool_calls".to_string(), calls.clone());
                     }
                 }
                 if let Some(tid) = m.get("tool_call_id") {
                     if !tid.is_null() {
-                        mapped.as_object_mut().unwrap().insert("tool_call_id".to_string(), tid.clone());
+                        mapped
+                            .as_object_mut()
+                            .unwrap()
+                            .insert("tool_call_id".to_string(), tid.clone());
                     }
                 }
                 openai_messages.push(mapped);
@@ -98,10 +104,13 @@ impl Node for LLMReasoningNode {
             Ok(v) => v,
             Err(e) => {
                 println!("\n[LLM Error]: {}\n", e);
-                return Ok(ProcessResult::new(PiState::WaitForInput, "error".to_string()));
+                return Ok(ProcessResult::new(
+                    PiState::WaitForInput,
+                    "error".to_string(),
+                ));
             }
         };
-        
+
         // Ensure choice 0 exists
         if let Some(choices) = res.get("choices").and_then(|c| c.as_array()) {
             if let Some(choice) = choices.first() {
@@ -130,17 +139,26 @@ impl Node for LLMReasoningNode {
 
                 // Update context
                 let mut messages = context.get("messages").cloned().unwrap_or(json!([]));
-                messages.as_array_mut().unwrap().push(serde_json::to_value(&agent_msg)?);
+                messages
+                    .as_array_mut()
+                    .unwrap()
+                    .push(serde_json::to_value(&agent_msg)?);
                 context.set("messages", messages);
 
                 if let Some(tc) = tool_calls {
                     if !tc.is_null() && tc.as_array().map_or(false, |a| !a.is_empty()) {
-                        return Ok(ProcessResult::new(PiState::ExecuteTool, "execute_tool".to_string()));
+                        return Ok(ProcessResult::new(
+                            PiState::ExecuteTool,
+                            "execute_tool".to_string(),
+                        ));
                     }
                 }
             }
         }
 
-        Ok(ProcessResult::new(PiState::WaitForInput, "wait_for_input".to_string()))
+        Ok(ProcessResult::new(
+            PiState::WaitForInput,
+            "wait_for_input".to_string(),
+        ))
     }
 }
