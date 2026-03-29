@@ -10,16 +10,13 @@ license = "MIT"
 name = "pocketflow_rs"
 path = "src/lib.rs"
 
-[[bin]]
-name = "pi"
-path = "src/bin/pi.rs"
 
 [[example]]
 name = "basic"
 path = "examples/basic.rs"
 
 [workspace]
-members = ["examples/pocketflow-rs-rag", "examples/text2sql"]
+members = ["examples/pocketflow-rs-rag", "examples/text2sql", "examples/pi"]
 
 [workspace.dependencies]
 strum = "0.26"
